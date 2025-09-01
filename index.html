@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUUSTANDI Dice Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+            text-align: center;
+        }
+        .form-section {
+            background-color: #2d3748;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .form-section input {
+            background-color: #4a5568;
+            border: 2px solid #718096;
+            color: #e2e8f0;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            width: 100%;
+            transition: border-color 0.3s;
+        }
+        .form-section input:focus {
+            outline: none;
+            border-color: #a0aec0;
+        }
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 500px;
+            margin-top: 2rem;
+            position: relative;
+        }
+        .square-box {
+            width: 100%;
+            padding-top: 100%; /* 1:1 aspect ratio */
+            background-color: #4a5568;
+            border: 2px solid #a0aec0;
+            border-radius: 0.5rem;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.3s;
+        }
+        .square-box.visited {
+            background-color: #2f855a;
+        }
+        .square-box.matched {
+            background-color: #2f855a;
+        }
+        .square-box .number {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .bear {
+            position: absolute;
+            z-index: 20;
+            width: 3rem;
+            height: 3rem;
+            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            font-size: 2rem;
+        }
+        .dice-container {
+            perspective: 500px;
+            width: 80px;
+            height: 80px;
+            cursor: grab;
+            user-select: none;
+            position: relative;
+        }
+        .dice-inner {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transform: rotateX(0) rotateY(0);
+            transition: transform 1.5s ease-out;
+        }
+        .face {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: #cbd5e0;
+            border: 2px solid #2d3748;
+            border-radius: 0.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        .one { transform: rotateY(0deg) translateZ(40px); }
+        .two { transform: rotateX(90deg) translateZ(40px); }
+        .three { transform: rotateY(90deg) translateZ(40px); }
+        .four { transform: rotateY(-90deg) translateZ(40px); }
+        .five { transform: rotateX(-90deg) translateZ(40px); }
+        .six { transform: rotateY(180deg) translateZ(40px); }
+        
+        .dice-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #2d3748;
+            border-radius: 50%;
+            position: absolute;
+        }
+        .one .dot-center { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .two .dot-top-left { top: 15px; left: 15px; }
+        .two .dot-bottom-right { bottom: 15px; right: 15px; }
+        .three .dot-top-left { top: 15px; left: 15px; }
+        .three .dot-center { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .three .dot-bottom-right { bottom: 15px; right: 15px; }
+        .four .dot-top-left { top: 15px; left: 15px; }
+        .four .dot-top-right { top: 15px; right: 15px; }
+        .four .dot-bottom-left { bottom: 15px; left: 15px; }
+        .four .dot-bottom-right { bottom: 15px; right: 15px; }
+        .five .dot-top-left { top: 15px; left: 15px; }
+        .five .dot-top-right { top: 15px; right: 15px; }
+        .five .dot-center { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        .five .dot-bottom-left { bottom: 15px; left: 15px; }
+        .five .dot-bottom-right { bottom: 15px; right: 15px; }
+        .six .dot-top-left { top: 15px; left: 15px; }
+        .six .dot-top-right { top: 15px; right: 15px; }
+        .six .dot-middle-left { top: 50%; left: 15px; transform: translateY(-50%); }
+        .six .dot-middle-right { top: 50%; right: 15px; transform: translateY(-50%); }
+        .six .dot-bottom-left { bottom: 15px; left: 15px; }
+        .six .dot-bottom-right { bottom: 15px; right: 15px; }
+
+        /* Memory Game Styles */
+        .card {
+            background-color: #2d3748;
+            border: 2px solid #718096;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+        }
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5rem;
+            border-radius: 0.5rem;
+        }
+        .card-front {
+            background-color: #4a5568;
+            transform: rotateY(180deg);
+        }
+        .card-back {
+            background-color: #4a5568;
+        }
+        .card-back.matched {
+            background-color: #2f855a;
+        }
+
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <div class="container">
+        <div class="text-center">
+            <h1 class="text-6xl font-bold tracking-tight text-white uppercase" style="font-family: 'Inter', sans-serif;">MUUSTANDI</h1>
+        </div>
+
+        <!-- User Details Form -->
+        <div id="formContainer" class="form-section mt-8 w-full max-w-sm rounded-xl">
+            <p class="text-xl font-medium mb-4">Enter Your Details</p>
+            <div class="space-y-4">
+                <input type="text" id="name" placeholder="Name" class="rounded-xl">
+                <input type="text" id="surname" placeholder="Surname" class="rounded-xl">
+                <input type="text" id="cellNumber" placeholder="Cell Number" class="rounded-xl">
+            </div>
+            <button id="startGameBtn" class="mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl transition-colors duration-200 hidden">
+                Start Game
+            </button>
+        </div>
+        
+        <!-- Level 1: Dice Game Section -->
+        <div id="diceGameSection" class="hidden">
+            <div class="flex flex-col items-center mt-8">
+                <div class="flex justify-between w-full max-w-sm mb-4">
+                    <div class="flex flex-col items-center">
+                        <p class="text-lg font-bold">Score:</p>
+                        <p id="score" class="text-4xl font-bold text-yellow-400">0</p>
+                    </div>
+                    <div id="multiplierDisplay" class="hidden flex-col items-center">
+                        <p class="text-lg font-bold">Multiplier Active!</p>
+                        <p id="multiplierCountdown" class="text-4xl font-bold text-red-500">30</p>
+                    </div>
+                </div>
+
+                <div class="game-board" id="gameBoard1">
+                    <!-- Bear -->
+                    <div id="bear" class="bear" style="font-size: 2rem;">🐻</div>
+                </div>
+            </div>
+            
+            <div class="mt-8 flex flex-col items-center">
+                <p id="message1" class="text-center text-lg font-medium mb-4">Drag and release the dice to roll!</p>
+                <div id="dice" class="dice-container mt-8">
+                    <div id="diceInner" class="dice-inner">
+                        <div class="face one">
+                            <span class="dice-dot dot-center"></span>
+                        </div>
+                        <div class="face two">
+                            <span class="dice-dot dot-top-left"></span>
+                            <span class="dice-dot dot-bottom-right"></span>
+                        </div>
+                        <div class="face three">
+                            <span class="dice-dot dot-top-left"></span>
+                            <span class="dice-dot dot-center"></span>
+                            <span class="dice-dot dot-bottom-right"></span>
+                        </div>
+                        <div class="face four">
+                            <span class="dice-dot dot-top-left"></span>
+                            <span class="dice-dot dot-top-right"></span>
+                            <span class="dice-dot dot-bottom-left"></span>
+                            <span class="dice-dot dot-bottom-right"></span>
+                        </div>
+                        <div class="face five">
+                            <span class="dice-dot dot-top-left"></span>
+                            <span class="dice-dot dot-top-right"></span>
+                            <span class="dice-dot dot-center"></span>
+                            <span class="dice-dot dot-bottom-left"></span>
+                            <span class="dice-dot dot-bottom-right"></span>
+                        </div>
+                        <div class="face six">
+                            <span class="dice-dot dot-top-left"></span>
+                            <span class="dice-dot dot-top-right"></span>
+                            <span class="dice-dot dot-middle-left"></span>
+                            <span class="dice-dot dot-middle-right"></span>
+                            <span class="dice-dot dot-bottom-left"></span>
+                            <span class="dice-dot dot-bottom-right"></span>
+                        </div>
+                    </div>
+                </div>
+                <button id="nextLevelBtn" class="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-colors duration-200 hidden">
+                    Next Level
+                </button>
+            </div>
+        </div>
+
+        <!-- Level 2: Memory Game Section -->
+        <div id="memoryGameSection" class="hidden">
+            <div class="flex flex-col items-center mt-8">
+                <div class="flex justify-between w-full max-w-sm mb-4">
+                    <div class="flex flex-col items-center">
+                        <p class="text-lg font-bold">Score:</p>
+                        <p id="score2" class="text-4xl font-bold text-yellow-400">0</p>
+                    </div>
+                </div>
+
+                <div class="game-board" id="gameBoard2"></div>
+            </div>
+            <div class="mt-8">
+                <button id="showBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-xl transition-colors duration-200">
+                    Show
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const formContainer = document.getElementById('formContainer');
+            const diceGameSection = document.getElementById('diceGameSection');
+            const memoryGameSection = document.getElementById('memoryGameSection');
+            const nameInput = document.getElementById('name');
+            const surnameInput = document.getElementById('surname');
+            const cellNumberInput = document.getElementById('cellNumber');
+            const startGameBtn = document.getElementById('startGameBtn');
+            const gameBoard1 = document.getElementById('gameBoard1');
+            const gameBoard2 = document.getElementById('gameBoard2');
+            const bear = document.getElementById('bear');
+            const diceContainer = document.getElementById('dice');
+            const diceInner = document.getElementById('diceInner');
+            const message1El = document.getElementById('message1');
+            const scoreEl = document.getElementById('score');
+            const score2El = document.getElementById('score2');
+            const multiplierDisplay = document.getElementById('multiplierDisplay');
+            const multiplierCountdownEl = document.getElementById('multiplierCountdown');
+            const nextLevelBtn = document.getElementById('nextLevelBtn');
+            const showBtn = document.getElementById('showBtn');
+
+            let bearPosition = 0;
+            let score = 0;
+            let isRolling = false;
+            let isMultiplierActive = false;
+            let multiplierTimer = null;
+            let visitedBlocks = new Set();
+            
+            // Dice Drag Logic
+            let isDragging = false;
+            let currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
+
+            // Level 2 Variables
+            const cardValues = ['🍌', '🍏', '🍊', '🍇', '🥝', '🍅', '🥕', '🥬', '🍌', '🍏', '🍊', '🍇', '🥝', '🍅', '🥕', '🥬'];
+            let flippedCards = [];
+            let matchedCards = [];
+
+            // --- Game State Management ---
+            function showLevel1() {
+                formContainer.classList.add('hidden');
+                diceGameSection.classList.remove('hidden');
+                memoryGameSection.classList.add('hidden');
+                createDiceGameBoard();
+                positionBear(0);
+            }
+
+            function showLevel2() {
+                diceGameSection.classList.add('hidden');
+                memoryGameSection.classList.remove('hidden');
+                score2El.textContent = score;
+                createMemoryGameBoard();
+            }
+
+            // --- Level 1 Logic: Dice Game ---
+            function dragStart(e) {
+                if (isRolling) return;
+                initialX = e.clientX - xOffset;
+                initialY = e.clientY - yOffset;
+                isDragging = true;
+                diceContainer.style.cursor = 'grabbing';
+            }
+
+            function dragEnd(e) {
+                if (!isDragging || isRolling) return;
+                isDragging = false;
+                diceContainer.style.cursor = 'grab';
+                rollDice();
+            }
+
+            function drag(e) {
+                if (!isDragging) return;
+                e.preventDefault();
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+                xOffset = currentX;
+                yOffset = currentY;
+                setTranslate(currentX, currentY, diceContainer);
+            }
+
+            function setTranslate(xPos, yPos, el) {
+                el.style.transform = "translate3d(" + xPos + "px, " + yPos + "px, 0)";
+            }
+
+            function updateScore(points) {
+                score += isMultiplierActive ? points * 2 : points;
+                scoreEl.textContent = score;
+            }
+
+            function startMultiplier() {
+                if (isMultiplierActive) return;
+                isMultiplierActive = true;
+                multiplierDisplay.classList.remove('hidden');
+                let countdown = 30;
+                multiplierCountdownEl.textContent = countdown;
+
+                multiplierTimer = setInterval(() => {
+                    countdown--;
+                    multiplierCountdownEl.textContent = countdown;
+                    if (countdown <= 0) {
+                        clearInterval(multiplierTimer);
+                        isMultiplierActive = false;
+                        multiplierDisplay.classList.add('hidden');
+                    }
+                }, 1000);
+            }
+
+            function rollDice() {
+                if (isRolling) return;
+                isRolling = true;
+                message1El.textContent = "Rolling...";
+
+                const diceRoll = Math.floor(Math.random() * 6) + 1;
+                const rollAngles = [
+                    'rotateY(0deg)', 'rotateX(-90deg)', 'rotateY(90deg)', 'rotateY(-90deg)', 'rotateX(90deg)', 'rotateY(180deg)'
+                ];
+                
+                const finalRotation = rollAngles[diceRoll - 1];
+                const randomX = Math.floor(Math.random() * 3) + 2;
+                const randomY = Math.floor(Math.random() * 3) + 2;
+
+                diceInner.style.transition = 'transform 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55)';
+                diceInner.style.transform = `rotateX(${randomX * 360}deg) rotateY(${randomY * 360}deg) ${finalRotation}`;
+
+                setTimeout(() => {
+                    message1El.textContent = `You rolled a ${diceRoll}!`;
+                    if (diceRoll === 6) {
+                        startMultiplier();
+                        message1El.textContent += " Multiplier Activated!";
+                    }
+                    moveBear(diceRoll);
+                }, 1500);
+            }
+
+            async function moveBear(steps) {
+                const boardSquares = Array.from(document.querySelectorAll('#gameBoard1 .square-box'));
+                for (let i = 0; i < steps; i++) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    bearPosition = (bearPosition + 1) % boardSquares.length;
+                    positionBear(bearPosition);
+                }
+                
+                const finalSquare = boardSquares[bearPosition];
+                if (!visitedBlocks.has(bearPosition)) {
+                    finalSquare.classList.add('visited');
+                    visitedBlocks.add(bearPosition);
+                    updateScore(5);
+                }
+
+                if (visitedBlocks.size === 16) {
+                    message1El.textContent = "All blocks visited! Score Obtained: " + score;
+                    nextLevelBtn.classList.remove('hidden');
+                }
+                
+                isRolling = false;
+            }
+
+            function positionBear(index) {
+                const targetElement = document.querySelectorAll('#gameBoard1 .square-box')[index];
+                if (!targetElement) return;
+                
+                const boardRect = gameBoard1.getBoundingClientRect();
+                const targetRect = targetElement.getBoundingClientRect();
+
+                const bearX = targetRect.left + targetRect.width / 2 - boardRect.left;
+                const bearY = targetRect.top + targetRect.height / 2 - boardRect.top;
+
+                bear.style.transform = `translate(${bearX}px, ${bearY}px)`;
+            }
+
+            function createDiceGameBoard() {
+                gameBoard1.innerHTML = '';
+                visitedBlocks.clear();
+                for (let i = 0; i < 16; i++) {
+                    const square = document.createElement('div');
+                    square.classList.add('square-box', 'rounded-xl');
+                    
+                    const numberEl = document.createElement('span');
+                    numberEl.classList.add('number');
+                    numberEl.textContent = i + 1;
+                    square.appendChild(numberEl);
+
+                    gameBoard1.appendChild(square);
+                }
+                gameBoard1.appendChild(bear);
+                positionBear(0);
+            }
+
+            // --- Level 2 Logic: Memory Game ---
+            function shuffle(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+
+            function createMemoryGameBoard() {
+                gameBoard2.innerHTML = '';
+                const shuffledCards = shuffle([...cardValues]);
+
+                shuffledCards.forEach((value, index) => {
+                    const card = document.createElement('div');
+                    card.classList.add('card');
+                    card.dataset.value = value;
+                    card.dataset.index = index;
+
+                    const cardFront = document.createElement('div');
+                    cardFront.classList.add('card-face', 'card-front');
+                    cardFront.textContent = value;
+
+                    const cardBack = document.createElement('div');
+                    cardBack.classList.add('card-face', 'card-back');
+                    cardBack.textContent = '🐻';
+
+                    card.appendChild(cardFront);
+                    card.appendChild(cardBack);
+
+                    card.addEventListener('click', () => flipCard(card));
+                    gameBoard2.appendChild(card);
+                });
+            }
+
+            function flipCard(card) {
+                if (flippedCards.length < 2 && !card.classList.contains('flipped') && !card.classList.contains('matched')) {
+                    card.classList.add('flipped');
+                    flippedCards.push(card);
+
+                    if (flippedCards.length === 2) {
+                        showBtn.classList.remove('hidden');
+                        setTimeout(checkMatch, 1000);
+                    }
+                }
+            }
+
+            function checkMatch() {
+                const [card1, card2] = flippedCards;
+                if (card1.dataset.value === card2.dataset.value) {
+                    card1.classList.add('matched');
+                    card2.classList.add('matched');
+                    matchedCards.push(card1, card2);
+                    if (matchedCards.length === cardValues.length) {
+                        message1El.textContent = "Congratulations! You won the memory game!";
+                    }
+                } else {
+                    card1.classList.remove('flipped');
+                    card2.classList.remove('flipped');
+                    score -= 5;
+                    score2El.textContent = score;
+                }
+                flippedCards = [];
+            }
+            
+            showBtn.addEventListener('click', () => {
+                const cards = document.querySelectorAll('#gameBoard2 .card:not(.matched)');
+                cards.forEach(card => card.classList.add('flipped'));
+
+                setTimeout(() => {
+                    cards.forEach(card => card.classList.remove('flipped'));
+                }, 500);
+            });
+
+            // --- Initial Setup and Event Listeners ---
+            function checkFormCompletion() {
+                if (nameInput.value && surnameInput.value && cellNumberInput.value) {
+                    startGameBtn.classList.remove('hidden');
+                } else {
+                    startGameBtn.classList.add('hidden');
+                }
+            }
+
+            nameInput.addEventListener('input', checkFormCompletion);
+            surnameInput.addEventListener('input', checkFormCompletion);
+            cellNumberInput.addEventListener('input', checkFormCompletion);
+            
+            startGameBtn.addEventListener('click', showLevel1);
+            nextLevelBtn.addEventListener('click', showLevel2);
+
+            diceContainer.addEventListener("mousedown", dragStart, false);
+            document.addEventListener("mouseup", dragEnd, false);
+            document.addEventListener("mousemove", drag, false);
+
+            diceContainer.addEventListener("touchstart", dragStart, false);
+            document.addEventListener("touchend", dragEnd, false);
+            document.addEventListener("touchmove", drag, false);
+        });
+    </script>
+</body>
+</html>
